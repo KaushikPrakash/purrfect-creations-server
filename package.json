@@ -4,7 +4,8 @@
   "description": "A simple Node.js app to manage Airtable Orders",
   "main": "dist/serve.js",
   "scripts": {
-    "start:dev": "npx nodemon",
+    "dev": "npx nodemon",
+    "start": "NODE_PATH=./dist node dist/server.js",
     "build": "rimraf ./dist && tsc",
     "lint": "eslint . --ext .ts",
     "lint-and-fix": "eslint . --ext .ts --fix"
