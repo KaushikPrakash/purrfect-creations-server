@@ -14,6 +14,8 @@ purrfect-creations-web uses Typescript, Node.js and GraphQL
 - List of recent Orders
 
 ## Installation
+The application needs AIRTABLE_API_KEY and AIRTABLE_BASE_ID to access Airtable.
+So create a `.env` in the root directory with appropriate values
 
 It requires Docker to be installed locally.
 
