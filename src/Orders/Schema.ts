@@ -1,6 +1,7 @@
-import { gql } from "apollo-server-express"; //will create a schema
+import { gql } from "apollo-server-express";
 
 const Schema = gql`
+  scalar Date
   type Order {
     order_id: ID!
     order_placed: String
@@ -13,11 +14,18 @@ const Schema = gql`
     order_status: String
   }
 
+  type TotalRevenueByMonthType {
+    month: String!
+    year: String!
+    revenue: Float!
+  }
+
   type Query {
     totalOrders: Int!
-    totalOrdersByMonth(date: String!): Int
+    totalOrdersByMonth(selectedDate: Date!): Int!
     ordersInProgress: Int!
     totalRevenue: Int!
+    totalRevenueByMonthAndYear: [TotalRevenueByMonthType]!
     recentOrders(numOrders: Int!): [Order]!
   }
 `;

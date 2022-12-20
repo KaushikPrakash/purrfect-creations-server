@@ -1,114 +1,98 @@
 import Airtable from "airtable";
+import { config } from "dotenv";
+config();
 
-// Replace with your Airtable API key
-const AIRTABLE_API_KEY = "key7TCn5BPQiu9jKy";
+import { TotalRevenueByMonthAndYearType } from "./types";
 
-// Replace with the base ID of your Airtable database
-const AIRTABLE_BASE_ID = "app8wLQrrIMrnn673";
+import { getTotalRevenuePerMonthAndYear } from "./utils";
+import { DateScalar } from "graphql-date-scalars";
+
+const AIRTABLE_API_KEY: string = process.env.AIRTABLE_API_KEY as string;
+
+const AIRTABLE_BASE_ID: string = process.env.AIRTABLE_BASE_ID as string;
 
 const TABLE_NAME = "Orders";
-
-// Create a new Airtable instance
 const airtable = new Airtable({ apiKey: AIRTABLE_API_KEY }).base(
   AIRTABLE_BASE_ID
 );
 
 const Resolvers = {
+  Date: DateScalar,
   Query: {
     totalOrders: async (): Promise<any> => {
-      // Fetch all records from the Orders table
-      try {
-        const records = await airtable(TABLE_NAME).select().all();
-
-        // Return the total number of records
-        return records.length;
-      } catch (err) {
-        console.error(err);
-        return 0;
-      }
+      const records = await airtable(TABLE_NAME).select().all();
+      return records.length;
     },
-    totalOrdersByMonth: async (_: any, { month, year }: any): Promise<any> => {
-      // Fetch all records from the Orders table
-      try {
-        const records = await airtable(TABLE_NAME)
-          .select({
-            filterByFormula: `AND(
-            MONTH({Date}) = ${month},
-            YEAR({Date}) = ${year}
-          )`,
-          })
-          .all();
-
-        // Return the total number of records
-        return records.length;
-      } catch (err) {
-        console.error(err);
-        return 0;
-      }
+    totalOrdersByMonth: async (
+      _: any,
+      { selectedDate }: any
+    ): Promise<number> => {
+      const d = new Date(selectedDate);
+      const selectedMonth = d.getMonth();
+      const selectedYear = d.getFullYear();
+      const formula = `DATETIME_PARSE(order_placed, 'YYYY-MM') = DATETIME_PARSE('${selectedMonth}-${selectedYear}-01', 'YYYY-MM-DD')`;
+      const records = await airtable(TABLE_NAME)
+        .select({
+          filterByFormula: formula,
+        })
+        .all();
+      return records.length;
     },
-    ordersInProgress: async (): Promise<any> => {
-      // Fetch all records from the Orders table
-      try {
-        const records = await airtable(TABLE_NAME)
-          .select({
-            filterByFormula: "{order_status} = 'in_progress'",
-          })
-          .all();
-
-        // Return the total number of records
-        return records.length;
-      } catch (err) {
-        console.error(err);
-        return 0;
-      }
+    ordersInProgress: async (): Promise<number> => {
+      const records = await airtable(TABLE_NAME)
+        .select({
+          filterByFormula: "{order_status} = 'in_progress'",
+        })
+        .all();
+      return records.length;
     },
     totalRevenue: async (): Promise<number> => {
-      try {
-        // Query Airtable for revenue in progress
-        let totalRevenue = 0;
-        const records = await airtable(TABLE_NAME)
-          .select({
-            filterByFormula: "{order_status} = 'in_progress'",
-          })
-          .all();
-        records.forEach((record) => {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
-          totalRevenue += parseInt(record.get("price"));
-        });
-        return totalRevenue;
-      } catch (error) {
-        // Log the error and return 0 if there is an issue fetching the revenue
-        console.error(error);
-        return 0;
-      }
+      let totalRevenue = 0;
+      const records = await airtable(TABLE_NAME)
+        .select({
+          filterByFormula: "{order_status} = 'in_progress'",
+        })
+        .all();
+      records.forEach((record) => {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        totalRevenue += parseInt(record.get("price"));
+      });
+      return totalRevenue;
+    },
+    totalRevenueByMonthAndYear: async (): Promise<
+      TotalRevenueByMonthAndYearType[]
+    > => {
+      const records = await airtable(TABLE_NAME)
+        .select({
+          sort: [{ field: "order_placed", direction: "asc" }],
+          filterByFormula: "{order_status} = 'in_progress'",
+        })
+        .all();
+      const monthlyRevenue = getTotalRevenuePerMonthAndYear(records);
+      return monthlyRevenue;
     },
 
     recentOrders: async (_: any, { numOrders }: any): Promise<any[]> => {
-      try {
-        const records = await airtable(TABLE_NAME)
-          .select({
-            sort: [{ field: "order_placed", direction: "desc" }],
-            maxRecords: numOrders,
-          })
-          .all();
+      const records = await airtable(TABLE_NAME)
+        .select({
+          sort: [{ field: "order_placed", direction: "desc" }],
+          maxRecords: numOrders,
+        })
+        .all();
 
-        return records.map((record) => ({
-          order_id: record.get("order_id"),
-          order_placed: record.get("order_placed"),
-          product_name: record.get("product_name"),
-          price: record.get("price"),
-          first_name: record.get("first_name"),
-          last_name: record.get("last_name"),
-          quantity: record.get("Quantity"),
-          address: record.get("address"),
-          email: record.get("email"),
-          order_status: record.get("order_status"),
-        }));
-      } catch (err) {
-        console.error(err);
-        return [];
-      }
+      return records.map((record) => ({
+        order_id: record.get("order_id"),
+        order_placed: record.get("order_placed"),
+        product_name: record.get("product_name"),
+        price: record.get("price"),
+        first_name: record.get("first_name"),
+        last_name: record.get("last_name"),
+        quantity: record.get("Quantity"),
+        address: record.get("address"),
+        email: record.get("email"),
+        order_status: record.get("order_status"),
+      }));
     },
   },
 };
